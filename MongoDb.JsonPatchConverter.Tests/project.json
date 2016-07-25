@@ -1,0 +1,18 @@
+{
+  "version": "1.0.0-beta0",
+
+  "dependencies": {
+    "Microsoft.AspNetCore.JsonPatch": "1.0.0",
+    "MongoDb.JsonPatchConverter": "1.0.0-beta0",
+    "dotnet-test-xunit": "2.2.0-*",
+    "xunit": "2.2.0-*"
+  },
+  "testRunner": "xunit",
+  "frameworks": {
+    "net452": {
+      "dependencies": {
+        "System.Threading.Tasks": "4.0.0.0"
+      }
+    }
+  }
+}
