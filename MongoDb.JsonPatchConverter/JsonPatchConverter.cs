@@ -11,7 +11,7 @@ using Newtonsoft.Json;
 
 namespace MongoDb.JsonPatchConverter
 {
-    public class JsonPatchConverter
+    public class JsonPatchConverter : IJsonPatchConverter
     {
         private const string OperationNotSupportedFormat = "Operation '{0}' is not supported.";
         private const string NotSupportedByMongo =
