@@ -3,7 +3,7 @@
 
   "dependencies": {
     "Microsoft.AspNetCore.JsonPatch": "1.0.0",
-    "MongoDb.JsonPatchConverter": "1.0.0-beta0",
+    "MongoDb.JsonPatchConverter": "1.0.0-beta1",
     "dotnet-test-xunit": "2.2.0-*",
     "xunit": "2.2.0-*"
   },
