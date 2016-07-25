@@ -9,11 +9,7 @@
       "url": "https://github.com/l0nley/MongoDb.JsonPatchConverter.git"
     },
     "owners": [ "<Uladzimir Harabtsou> hofvl0nley@gmail.com" ],
-    "tags": [ "MongoDB", "REST", "PATCH", "JsonPatch", " AspNet", "WebApi", "MVC", "AspNetMvc" ],
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/l0nley/MongoDb.JsonPatchConverter.git"
+    "tags": [ "MongoDB", "REST", "PATCH", "JsonPatch", " AspNet", "WebApi", "MVC", "AspNetMvc" ]
   },
   "dependencies": {
     "MongoDb.Driver": "2.2.4",
