@@ -6,7 +6,7 @@ using System.Text.RegularExpressions;
 
 namespace MongoDb.JsonPatchConverter
 {
-    public class MapRegistry
+    public class MapRegistry : IMapRegistry
     {
         private readonly ConcurrentDictionary<Type, MapDescription[]> _dictionary;
         private const string StringMappingNotAllowed = "String mapping is not allowed";
