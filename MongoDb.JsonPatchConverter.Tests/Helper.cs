@@ -1,4 +1,5 @@
 using System;
+using MongoDb.JsonPatchConverter.Tests.TestClasses;
 using MongoDB.Bson.Serialization;
 using MongoDB.Driver;
 
@@ -22,6 +23,16 @@ namespace MongoDb.JsonPatchConverter.Tests
             // ReSharper disable once SpecifyACultureInStringConversionExplicitly
             var result = filter.Render(documentSerializer, serializerRegistry).ToString();
             return result;
+        }
+
+        public static JsonPatchConverter GetConverter()
+        {
+            var registry = new MapRegistry();
+            registry.MapType<Dog>();
+            registry.MapType<UserEntity>();
+            registry.MapType<Cat>();
+            registry.MapType<Fruit>();
+            return new JsonPatchConverter(registry);
         }
 
 

@@ -5,57 +5,25 @@ using Microsoft.AspNetCore.JsonPatch.Operations;
 using MongoDb.JsonPatchConverter.Tests.TestClasses;
 using Newtonsoft.Json.Linq;
 using Xunit;
-using Xunit.Sdk;
 
 namespace MongoDb.JsonPatchConverter.Tests
 {
     public class JsonConverter
     {
-        [Fact]
-        [Trait("Category", "General")]
-        public void ThrowsIfOutTypeNotRegistered()
-        {
-            var converter = new JsonPatchConverter();
-            var doc = new JsonPatchDocument<Cat>();
-            Assert.Throws<InvalidOperationException>(() => converter.Convert<Dog, Cat>(doc));
-        }
-
-        [Fact]
-        [Trait("Category", "General")]
-        public void ThrowsIfInTypeNotRegistered()
-        {
-            var converter = new JsonPatchConverter();
-            var doc = new JsonPatchDocument<Dog>();
-            Assert.Throws<InvalidOperationException>(() => converter.Convert<Cat, Dog>(doc));
-        }
-
 
         [Fact]
         [Trait("Category", "General")]
         public void RegistersMapWithoutErrors()
         {
-            var converter = new JsonPatchConverter();
-            converter.MapType<Dog>();
-            converter.MapType<Cat>();
-            converter.MapType<UserEntity>();
+            Helper.GetConverter();
             Assert.True(true);
-        }
-
-        [Fact]
-        [Trait("Category", "General")]
-        public void ThrowsIfMapString()
-        {
-            var converter = new JsonPatchConverter();
-            Assert.Throws<InvalidOperationException>(() => converter.MapType<string>());
         }
 
         [Fact]
         [Trait("Category", "General")]
         public void ThrowsIfModelsNotIntersect()
         {
-            var converter = new JsonPatchConverter();
-            converter.MapType<Dog>();
-            converter.MapType<Fruit>();
+            var converter = Helper.GetConverter();
             Assert.Throws<InvalidOperationException>(()=>converter.Convert<Fruit, Dog>(new JsonPatchDocument<Dog>()));
         }
 
@@ -63,9 +31,7 @@ namespace MongoDb.JsonPatchConverter.Tests
         [Trait("Category", "General")]
         public void EmptyOperationsListReturnEmptyResult()
         {
-            var converter = new JsonPatchConverter();
-            converter.MapType<Dog>();
-            converter.MapType<Cat>();
+            var converter = Helper.GetConverter();
             var result = converter.Convert<Cat, Dog>(new JsonPatchDocument<Dog>());
             Assert.False(result.HasErrors);
             Assert.False(result.Filters.Any());
@@ -80,9 +46,7 @@ namespace MongoDb.JsonPatchConverter.Tests
         [InlineData("copy")]
         public void NotSupportedOperationReturnNotSupportedError(string op)
         {
-            var converter = new JsonPatchConverter();
-            converter.MapType<Dog>();
-            converter.MapType<Cat>();
+            var converter = Helper.GetConverter();
             var doc = new JsonPatchDocument<Dog>();
             doc.Operations.Add(new Operation<Dog>
             {
@@ -107,9 +71,7 @@ namespace MongoDb.JsonPatchConverter.Tests
         [InlineData("/Name$")]
         public void InvalidPathInOperationReturnsPathError(string path)
         {
-            var converter = new JsonPatchConverter();
-            converter.MapType<Dog>();
-            converter.MapType<Cat>();
+            var converter = Helper.GetConverter();
             var doc = new JsonPatchDocument<Dog>();
             doc.Operations.Add(new Operation<Dog>
             {
@@ -130,8 +92,7 @@ namespace MongoDb.JsonPatchConverter.Tests
         
         public void RemoveOperationReturnsFilterToExistAndUnsetOperation(string path, string filter, string update)
         {
-            var converter = new JsonPatchConverter();
-            converter.MapType<UserEntity>();
+            var converter = Helper.GetConverter();
             var doc = new JsonPatchDocument<UserEntity>();
             doc.Operations.Add(new Operation<UserEntity>
             {
@@ -152,8 +113,7 @@ namespace MongoDb.JsonPatchConverter.Tests
         // Remove array element by index is not supported https://jira.mongodb.org/browse/SERVER-1014
         public void RemoveByIndexReturnsNotSupportedError(string path)
         {
-            var converter = new JsonPatchConverter();
-            converter.MapType<UserEntity>();
+            var converter = Helper.GetConverter();
             var doc = new JsonPatchDocument<UserEntity>();
             doc.Operations.Add(new Operation<UserEntity>
             {
@@ -177,8 +137,7 @@ namespace MongoDb.JsonPatchConverter.Tests
         [InlineData("/Dogs/2/FavoriteFood", "Meat","{ \"Dogs.2.FavoriteFood\" : { \"$exists\" : true } }", "{ \"$set\" : { \"Dogs.2.FavoriteFood\" : \"Meat\" } }", false)]
         public void ReplaceOperationReturnsFilterToExistAndSetOperation(string path,object value, string filter, string update, bool isArray)
         {
-            var converter = new JsonPatchConverter();
-            converter.MapType<UserEntity>();
+            var converter = Helper.GetConverter();
             var doc = new JsonPatchDocument<UserEntity>();
             doc.Operations.Add(new Operation<UserEntity>
             {
@@ -200,8 +159,7 @@ namespace MongoDb.JsonPatchConverter.Tests
         [InlineData("/Dogs", "new dogs")]
         public void ReplaceOperationReturnsErrorsWhenTypeMissmatch(string path, object value)
         {
-            var converter = new JsonPatchConverter();
-            converter.MapType<UserEntity>();
+            var converter = Helper.GetConverter();
             var doc = new JsonPatchDocument<UserEntity>();
             doc.Operations.Add(new Operation<UserEntity>
             {
@@ -224,8 +182,7 @@ namespace MongoDb.JsonPatchConverter.Tests
         [InlineData("/Rating", 10)]
         public void AddForRootPathReturnsNoFilter(string path, object value)
         {
-            var converter = new JsonPatchConverter();
-            converter.MapType<UserEntity>();
+            var converter = Helper.GetConverter();
             var doc = new JsonPatchDocument<UserEntity>();
             doc.Operations.Add(new Operation<UserEntity>
             {
@@ -246,8 +203,7 @@ namespace MongoDb.JsonPatchConverter.Tests
         [InlineData("/aaaaaa/asdasdasd", 10)]
         public void AddOnNotExistancePathOnModelReturnsError(string path, object value)
         {
-            var converter = new JsonPatchConverter();
-            converter.MapType<UserEntity>();
+            var converter = Helper.GetConverter();
             var doc = new JsonPatchDocument<UserEntity>();
             doc.Operations.Add(new Operation<UserEntity>
             {
@@ -270,8 +226,7 @@ namespace MongoDb.JsonPatchConverter.Tests
         [InlineData("/Dogs/1/Legs/1/IsOk", true, "{ \"Dogs.1.Legs.1\" : { \"$exists\" : true } }", "{ \"$set\" : { \"Dogs.1.Legs.1.IsOk\" : true } }")]
         public void AddOnArrayElementReturnsArrayShouldExists(string path, object value, string filter, string update)
         {
-            var converter = new JsonPatchConverter();
-            converter.MapType<UserEntity>();
+            var converter = Helper.GetConverter();
             var doc = new JsonPatchDocument<UserEntity>();
             doc.Operations.Add(new Operation<UserEntity>
             {

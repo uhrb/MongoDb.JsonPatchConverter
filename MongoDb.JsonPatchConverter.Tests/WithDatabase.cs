@@ -17,8 +17,7 @@ namespace MongoDb.JsonPatchConverter.Tests
         [InlineData("/Dogs", "[ {\"Name\":\"Sparky\" } ]", true)]
         public void ApplyReplaceArray(string path, object value, bool isArray)
         {
-            var converter = new JsonPatchConverter();
-            converter.MapType<UserEntity>();
+            var converter = Helper.GetConverter();
             var doc = new JsonPatchDocument<UserEntity>();
             BsonClassMap.RegisterClassMap<UserEntity>();
             doc.Operations.Add(new Operation<UserEntity>

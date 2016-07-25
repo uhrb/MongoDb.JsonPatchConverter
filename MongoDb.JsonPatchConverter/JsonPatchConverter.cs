@@ -1,8 +1,6 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.JsonPatch.Operations;
 using MongoDB.Driver;
@@ -22,35 +20,22 @@ namespace MongoDb.JsonPatchConverter
         private const string PathNotFoundFormat = "Operation '{0}' points to path '{1}' , which is not found on models.";
         private const string FiledMismatchOnTypes = "Model {0} does not have any field, which exist in {1}.";
         private const string OperationUpdateDefinitionTypeName = "MongoDB.Driver.OperatorUpdateDefinition`2";
-        private const string StringMappingNotAllowed = "String mapping is not allowed";
 
         private static readonly Type OperationUpdateDefinitionType;
         private static readonly Type GenericStringFieldDefinition;
-        private readonly ConcurrentDictionary<Type, MapDescription[]> _dictionary;
+
+        private readonly MapRegistry _mapRegistry;
+        
 
         static JsonPatchConverter()
         {
             OperationUpdateDefinitionType = typeof(UpdateDefinition<>).Assembly.GetType(OperationUpdateDefinitionTypeName, true);
             GenericStringFieldDefinition = typeof(StringFieldDefinition<int, int>).GetGenericTypeDefinition();
         }
-        public JsonPatchConverter()
-        {
-            _dictionary = new ConcurrentDictionary<Type, MapDescription[]>();
-        }
 
-        public void MapType<T>() where T : class
+        public JsonPatchConverter(MapRegistry mapRegistry)
         {
-            var type = typeof(T);
-            if (type == typeof(string))
-            {
-                throw new InvalidOperationException(StringMappingNotAllowed);
-            }
-            var valueFactory =
-                new Func<Type, MapDescription[]>(
-                    a => a.GetProperties()
-                        .SelectMany(_ => CreateTypeMappings(null, false, _.Name, _.PropertyType, new string[] { }))
-                        .ToArray());
-            _dictionary.AddOrUpdate(type, valueFactory, (a, b) => b);
+            _mapRegistry = mapRegistry;
         }
 
         public ConversionResult<TOut> Convert<TOut, TModel>(JsonPatchDocument<TModel> document) where TModel : class
@@ -163,12 +148,13 @@ namespace MongoDb.JsonPatchConverter
 
         private IEnumerable<MapDescription> MapsOrThrow(Type t)
         {
-            MapDescription[] modelMaps;
-            if (false == _dictionary.TryGetValue(t, out modelMaps))
+            var maps = _mapRegistry.GetMap(t).ToArray();
+
+            if (maps.Length == 0)
             {
                 throw new InvalidOperationException(string.Format(NoTypeMapFormat, t));
             }
-            return modelMaps;
+            return maps;
         }
 
         private static object ConvertType(MapDescription map, object value)
@@ -185,40 +171,7 @@ namespace MongoDb.JsonPatchConverter
             return value.IndexOfAny(BadSymbols) >= 0;
         }
 
-        private static IEnumerable<MapDescription> CreateTypeMappings(string previosRoot, bool isIndexer, string name, Type t, string[] arraySegments)
-        {
-            var root = string.IsNullOrEmpty(name) ? previosRoot : $"{previosRoot}/{name}";
-            var lst = new List<MapDescription>();
-            if (false == string.IsNullOrEmpty(root))
-            {
-                lst.Add(new MapDescription(new Regex($"^{root}$", RegexOptions.Compiled | RegexOptions.CultureInvariant), isIndexer, t));
-            }
-            if (t.IsValueType)
-            {
-                return lst;
-            }
-            if (t == typeof(string))
-            {
-                return lst;
-            }
-            if (t.IsArray)
-            {
-                var arrayRoot = root + "/[0-9]+";
-                var elementType = t.GetElementType();
-                var newSegments = new string[arraySegments.Length + 1];
-                arraySegments.CopyTo(newSegments, 0);
-                newSegments[newSegments.Length - 1] = root;
-                lst.AddRange(CreateTypeMappings(arrayRoot, true, string.Empty, elementType, arraySegments));
-            }
-            else
-            {
-                var props = t.GetProperties();
-                var mapped = props.SelectMany(_ => CreateTypeMappings(root, false, _.Name, _.PropertyType, arraySegments));
-                lst.AddRange(mapped);
-            }
-
-            return lst;
-        }
+      
 
         private static UpdateDefinition<TOut> ConstructTypedSet<TOut>(string path, MapDescription map, object value)
         {
@@ -232,30 +185,6 @@ namespace MongoDb.JsonPatchConverter
             return (UpdateDefinition<TOut>)updateDefinition;
         }
 
-        private class MapDescription : IEquatable<MapDescription>
-        {
-            public MapDescription(Regex regex, bool isIndexer, Type type)
-            {
-                Regex = regex;
-                IsIndexer = isIndexer;
-                Type = type;
-            }
-            public Regex Regex { get; }
-
-            public bool IsIndexer { get; }
-            public Type Type { get; }
-
-            public bool Equals(MapDescription other)
-            {
-                return Regex.ToString() == other.Regex.ToString()
-                       && IsIndexer == other.IsIndexer
-                       && Type == other.Type;
-            }
-
-            public override int GetHashCode()
-            {
-                return Regex.ToString().GetHashCode() ^ IsIndexer.GetHashCode() ^ Type.FullName.GetHashCode();
-            }
-        }
+      
     }
 }
