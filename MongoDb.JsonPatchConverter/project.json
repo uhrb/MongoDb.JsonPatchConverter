@@ -1,6 +1,20 @@
 ﻿{
   "version": "1.0.0-beta0",
-
+  "title": "MongoDb.JsonPatchConverter",
+  "authors": [ "<Uladzimir Harabtsou> hofvl0nley@gmail.com" ],
+  "packOptions": {
+    "licenseUrl": "https://raw.githubusercontent.com/l0nley/MongoDb.JsonPatchConverter/master/LICENSE",
+    "repository": {
+      "type": "git",
+      "url": "https://github.com/l0nley/MongoDb.JsonPatchConverter.git"
+    },
+    "owners": [ "<Uladzimir Harabtsou> hofvl0nley@gmail.com" ],
+    "tags": [ "MongoDB", "REST", "PATCH", "JsonPatch", " AspNet", "WebApi", "MVC", "AspNetMvc" ],
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/l0nley/MongoDb.JsonPatchConverter.git"
+  },
   "dependencies": {
     "MongoDb.Driver": "2.2.4",
     "Microsoft.AspNetCore.JsonPatch": "1.0.0"
@@ -10,7 +24,7 @@
     "net452": {
       "dependencies": {
         "System.Collections": "4.0.0.0",
-        "System.Runtime"  : "4.0.10.0" 
+        "System.Runtime": "4.0.10.0"
       }
     }
   }
