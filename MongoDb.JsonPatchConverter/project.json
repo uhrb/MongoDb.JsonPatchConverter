@@ -1,5 +1,5 @@
 ﻿{
-  "version": "1.0.0-beta0",
+  "version": "1.0.0-beta1",
   "title": "MongoDb.JsonPatchConverter",
   "authors": [ "<Uladzimir Harabtsou> hofvl0nley@gmail.com" ],
   "packOptions": {
