@@ -69,7 +69,7 @@ public async Task<IActionResult> Modify([FromBody] JsonPatchDocument<SampleDTO> 
 }
 ```
 
-
+### Advance usages
 The above example will convert a `JsonPatchDocument<Sample>` and apply the changes to the `_sample` collection. However, if you need to define additional filter and operation, you can use another overload of `Apply(...)`, the example below will include a id match, userid match and update the timestamp upon updating the document:
 ```cs
 ... 
