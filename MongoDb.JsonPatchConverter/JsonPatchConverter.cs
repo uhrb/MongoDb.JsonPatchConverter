@@ -9,6 +9,9 @@ using Newtonsoft.Json;
 
 namespace MongoDb.JsonPatchConverter
 {
+    /// <summary>
+    /// Convert <see cref="JsonPatchDocument"/> to MongoDB update query
+    /// </summary>
     public class JsonPatchConverter : IJsonPatchConverter
     {
         private const string OperationNotSupportedFormat = "Operation '{0}' is not supported.";
@@ -34,7 +37,9 @@ namespace MongoDb.JsonPatchConverter
         public JsonSerializerSettings SerializerSettings { get; } = new JsonSerializerSettings();
         public Action<BsonDeserializationContext.Builder> DeserializationConfig { get; } = x => { };
 
-
+        /// <summary>
+        /// Instanciate <see cref="JsonPatchConverter"/> with custom serializer and deserializer settings
+        /// </summary>
         public JsonPatchConverter(
             IMapRegistry mapRegistry, 
             JsonSerializerSettings serializerSettings,
@@ -45,13 +50,39 @@ namespace MongoDb.JsonPatchConverter
             DeserializationConfig = deserializationConfig;
         }
 
+        /// <summary>
+        /// Instanciate <see cref="JsonPatchConverter"/>
+        /// </summary>
+        /// <param name="mapRegistry"></param>
         public JsonPatchConverter(IMapRegistry mapRegistry)
         {
             MapRegistry = mapRegistry;
         }
 
+        /// <summary>
+        /// Instanciate <see cref="JsonPatchConverter"/> with default <see cref="MongoDb.JsonPatchConverter.MapRegistry"/>
+        /// </summary>
         public JsonPatchConverter() : this(new MapRegistry()) { }
 
+
+        /// <summary>
+        /// Convert <see cref="JsonPatchDocument{TModel}"/> to MongoDb update query
+        /// </summary>
+        /// <typeparam name="TModel"> the json patch model </typeparam>
+        /// <param name="document"> the json patch document </param>
+        /// <returns> A object contains various definitions to update using MongoDb Driver </returns>
+        /// <exception cref="InvalidOperationException">  </exception>
+        public ConversionResult<TModel> Convert<TModel>(JsonPatchDocument<TModel> document) where TModel : class
+            => Convert<TModel, TModel>(document);
+
+        /// <summary>
+        /// Convert <see cref="JsonPatchDocument{TModel}"/> to MongoDb update query, with different model for input and output
+        /// </summary>
+        /// <typeparam name="TOut"> the output model, usually the one used in your database </typeparam>
+        /// <typeparam name="TModel"> the json patch model, eg: a DTO or a projection </typeparam>
+        /// <param name="document"> the json patch document </param>
+        /// <returns> A object contains various definitions to update using MongoDb Driver </returns>
+        /// <exception cref="InvalidOperationException">  </exception>
         public ConversionResult<TOut> Convert<TOut, TModel>(JsonPatchDocument<TModel> document) where TModel : class
         {
             var modelMaps = MapsOrThrow(typeof(TModel));
@@ -194,7 +225,6 @@ namespace MongoDb.JsonPatchConverter
         }
 
       
-
         private static UpdateDefinition<TOut> ConstructTypedSet<TOut>(string path, MapDescription map, object value)
         {
             // TODO add caching
@@ -206,7 +236,5 @@ namespace MongoDb.JsonPatchConverter
 
             return (UpdateDefinition<TOut>)updateDefinition;
         }
-
-      
     }
 }

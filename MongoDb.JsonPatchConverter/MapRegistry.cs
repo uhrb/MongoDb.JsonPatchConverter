@@ -6,6 +6,9 @@ using System.Text.RegularExpressions;
 
 namespace MongoDb.JsonPatchConverter
 {
+    /// <summary>
+    /// Default implementation of <see cref="IMapRegistry"/>
+    /// </summary>
     public class MapRegistry : IMapRegistry
     {
         private readonly ConcurrentDictionary<Type, MapDescription[]> _dictionary;
@@ -16,8 +19,7 @@ namespace MongoDb.JsonPatchConverter
             _dictionary = new ConcurrentDictionary<Type, MapDescription[]>();
         }
 
-        public void MapType<T>() where T : class => MapType(typeof(T));
-
+        /// <inheritdoc/>
         public void MapType(Type type)
         {
             if (type == typeof(string))
@@ -32,8 +34,7 @@ namespace MongoDb.JsonPatchConverter
             _dictionary.AddOrUpdate(type, valueFactory, (a, b) => b);
         }
 
-        public IEnumerable<MapDescription> GetMap<T>() => GetMap(typeof(T));
-
+        /// <inheritdoc/>
         public IEnumerable<MapDescription> GetMap(Type t)
         {
             if (!_dictionary.TryGetValue(t, out MapDescription[] map))
