@@ -9,6 +9,9 @@ using Newtonsoft.Json;
 
 namespace MongoDb.JsonPatchConverter
 {
+    /// <summary>
+    /// Convert <see cref="JsonPatchDocument"/> to MongoDB update query
+    /// </summary>
     public class JsonPatchConverter : IJsonPatchConverter
     {
         private const string OperationNotSupportedFormat = "Operation '{0}' is not supported.";
@@ -16,7 +19,7 @@ namespace MongoDb.JsonPatchConverter
             "Remove array element by index is not supported https://jira.mongodb.org/browse/SERVER-1014";
         private const string ConversionErrorFormat = "Cannot convert value for property at {0}";
         private const string NoTypeMapFormat = "Type {0} has no registered mappings";
-        private static readonly char[] BadSymbols = {'$', '{', '}', '[', ']'};
+        private static readonly char[] BadSymbols = { '$', '{', '}', '[', ']' };
         private const string PathNotFoundFormat = "Operation '{0}' points to path '{1}' , which is not found on models.";
         private const string FiledMismatchOnTypes = "Model {0} does not have any field, which exist in {1}.";
         private const string OperationUpdateDefinitionTypeName = "MongoDB.Driver.OperatorUpdateDefinition`2";
@@ -24,20 +27,62 @@ namespace MongoDb.JsonPatchConverter
         private static readonly Type OperationUpdateDefinitionType;
         private static readonly Type GenericStringFieldDefinition;
 
-        private readonly MapRegistry _mapRegistry;
-        
-
         static JsonPatchConverter()
         {
             OperationUpdateDefinitionType = typeof(UpdateDefinition<>).Assembly.GetType(OperationUpdateDefinitionTypeName, true);
             GenericStringFieldDefinition = typeof(StringFieldDefinition<int, int>).GetGenericTypeDefinition();
         }
 
-        public JsonPatchConverter(MapRegistry mapRegistry)
+        public IMapRegistry MapRegistry { get; }
+        public JsonSerializerSettings SerializerSettings { get; } = new JsonSerializerSettings();
+        public Action<BsonDeserializationContext.Builder> DeserializationConfig { get; } = x => { };
+
+        /// <summary>
+        /// Instanciate <see cref="JsonPatchConverter"/> with custom serializer and deserializer settings
+        /// </summary>
+        public JsonPatchConverter(
+            IMapRegistry mapRegistry, 
+            JsonSerializerSettings serializerSettings,
+            Action<BsonDeserializationContext.Builder> deserializationConfig)
         {
-            _mapRegistry = mapRegistry;
+            MapRegistry = mapRegistry;
+            SerializerSettings = serializerSettings;
+            DeserializationConfig = deserializationConfig;
         }
 
+        /// <summary>
+        /// Instanciate <see cref="JsonPatchConverter"/>
+        /// </summary>
+        /// <param name="mapRegistry"></param>
+        public JsonPatchConverter(IMapRegistry mapRegistry)
+        {
+            MapRegistry = mapRegistry;
+        }
+
+        /// <summary>
+        /// Instanciate <see cref="JsonPatchConverter"/> with default <see cref="MongoDb.JsonPatchConverter.MapRegistry"/>
+        /// </summary>
+        public JsonPatchConverter() : this(new MapRegistry()) { }
+
+
+        /// <summary>
+        /// Convert <see cref="JsonPatchDocument{TModel}"/> to MongoDb update query
+        /// </summary>
+        /// <typeparam name="TModel"> the json patch model </typeparam>
+        /// <param name="document"> the json patch document </param>
+        /// <returns> A object contains various definitions to update using MongoDb Driver </returns>
+        /// <exception cref="InvalidOperationException">  </exception>
+        public ConversionResult<TModel> Convert<TModel>(JsonPatchDocument<TModel> document) where TModel : class
+            => Convert<TModel, TModel>(document);
+
+        /// <summary>
+        /// Convert <see cref="JsonPatchDocument{TModel}"/> to MongoDb update query, with different model for input and output
+        /// </summary>
+        /// <typeparam name="TOut"> the output model, usually the one used in your database </typeparam>
+        /// <typeparam name="TModel"> the json patch model, eg: a DTO or a projection </typeparam>
+        /// <param name="document"> the json patch document </param>
+        /// <returns> A object contains various definitions to update using MongoDb Driver </returns>
+        /// <exception cref="InvalidOperationException">  </exception>
         public ConversionResult<TOut> Convert<TOut, TModel>(JsonPatchDocument<TModel> document) where TModel : class
         {
             var modelMaps = MapsOrThrow(typeof(TModel));
@@ -60,7 +105,7 @@ namespace MongoDb.JsonPatchConverter
                 switch (op.OperationType)
                 {
                     case OperationType.Add:
-                        HandleAdd(op, matched, path, result);
+                        HandleAdd(op, matched, path, result, SerializerSettings, DeserializationConfig);
                         break;
                     case OperationType.Copy:
                     case OperationType.Move:
@@ -71,7 +116,7 @@ namespace MongoDb.JsonPatchConverter
                         HandleRemove(op, matched, path, result);
                         break;
                     case OperationType.Replace:
-                        HandleReplace(op, matched, path, result);
+                        HandleReplace(op, matched, path, result, SerializerSettings, DeserializationConfig);
                         break;
 
                 }
@@ -84,12 +129,14 @@ namespace MongoDb.JsonPatchConverter
             Operation op,
             MapDescription map,
             string path,
-            ConversionResult<TOut> conversion)
+            ConversionResult<TOut> conversion,
+            JsonSerializerSettings serializerSettings,
+            Action<BsonDeserializationContext.Builder> deserializationConfig)
         {
             var val = op.value;
             try
             {
-                val = ConvertType(map, val);
+                val = ConvertType(map, val, serializerSettings, deserializationConfig);
             }
             catch
             {
@@ -122,7 +169,9 @@ namespace MongoDb.JsonPatchConverter
             Operation operation, 
             MapDescription map, 
             string path,
-            ConversionResult<TOut> conversion)
+            ConversionResult<TOut> conversion,
+            JsonSerializerSettings serializerSettings,
+            Action<BsonDeserializationContext.Builder> deserializationConfig)
         {
             var lastDot = path.LastIndexOf(".", StringComparison.InvariantCulture);
             if (lastDot >0)
@@ -135,7 +184,7 @@ namespace MongoDb.JsonPatchConverter
             object val;
             try
             {
-                val = ConvertType(map, operation.value);
+                val = ConvertType(map, operation.value, serializerSettings, deserializationConfig);
             }
             catch
             {
@@ -148,7 +197,7 @@ namespace MongoDb.JsonPatchConverter
 
         private IEnumerable<MapDescription> MapsOrThrow(Type t)
         {
-            var maps = _mapRegistry.GetMap(t).ToArray();
+            var maps = MapRegistry.GetMap(t).ToArray();
 
             if (maps.Length == 0)
             {
@@ -157,13 +206,17 @@ namespace MongoDb.JsonPatchConverter
             return maps;
         }
 
-        private static object ConvertType(MapDescription map, object value)
+        private static object ConvertType(
+            MapDescription map, 
+            object value, 
+            JsonSerializerSettings serializerSettings,
+            Action<BsonDeserializationContext.Builder> deserializationConfig)
         {
             // Actually, i wanted to implement something cool, but after i saw 
             // https://github.com/aspnet/JsonPatch/blob/98e2d5d4c729770e5e8e146602ab2b6c5bdc439a/src/Microsoft.AspNetCore.JsonPatch/Adapters/ObjectAdapter.cs#L1012
             // i decided, that everything is ok :)
-            var serialized = JsonConvert.SerializeObject(value);
-            return BsonSerializer.Deserialize(serialized, map.Type);
+            var serialized = JsonConvert.SerializeObject(value, serializerSettings);
+            return BsonSerializer.Deserialize(serialized, map.Type, deserializationConfig);
         }
 
         private static bool ContainsBadCharacters(string value)
@@ -172,7 +225,6 @@ namespace MongoDb.JsonPatchConverter
         }
 
       
-
         private static UpdateDefinition<TOut> ConstructTypedSet<TOut>(string path, MapDescription map, object value)
         {
             // TODO add caching
@@ -184,7 +236,5 @@ namespace MongoDb.JsonPatchConverter
 
             return (UpdateDefinition<TOut>)updateDefinition;
         }
-
-      
     }
 }

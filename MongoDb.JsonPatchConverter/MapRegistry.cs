@@ -6,6 +6,9 @@ using System.Text.RegularExpressions;
 
 namespace MongoDb.JsonPatchConverter
 {
+    /// <summary>
+    /// Default implementation of <see cref="IMapRegistry"/>
+    /// </summary>
     public class MapRegistry : IMapRegistry
     {
         private readonly ConcurrentDictionary<Type, MapDescription[]> _dictionary;
@@ -16,9 +19,9 @@ namespace MongoDb.JsonPatchConverter
             _dictionary = new ConcurrentDictionary<Type, MapDescription[]>();
         }
 
-        public void MapType<T>() where T : class
+        /// <inheritdoc/>
+        public void MapType(Type type)
         {
-            var type = typeof(T);
             if (type == typeof(string))
             {
                 throw new InvalidOperationException(StringMappingNotAllowed);
@@ -31,22 +34,27 @@ namespace MongoDb.JsonPatchConverter
             _dictionary.AddOrUpdate(type, valueFactory, (a, b) => b);
         }
 
+        /// <inheritdoc/>
         public IEnumerable<MapDescription> GetMap(Type t)
         {
-            MapDescription[] map;
-            if (false == _dictionary.TryGetValue(t, out map))
+            if (!_dictionary.TryGetValue(t, out MapDescription[] map))
             {
-                yield break;
+                MapType(t);
+                if (!_dictionary.TryGetValue(t, out map))
+                {
+                    yield break;
+                }
             }
+
             foreach (var mapDescription in map)
             {
                 yield return new MapDescription(mapDescription.Regex, mapDescription.IsIndexer, mapDescription.Type);
             }
         }
 
-        private static IEnumerable<MapDescription> CreateTypeMappings(string previosRoot, bool isIndexer, string name, Type t, string[] arraySegments)
+        private static IEnumerable<MapDescription> CreateTypeMappings(string previousRoot, bool isIndexer, string name, Type t, string[] arraySegments)
         {
-            var root = string.IsNullOrEmpty(name) ? previosRoot : $"{previosRoot}/{name}";
+            var root = string.IsNullOrEmpty(name) ? previousRoot : $"{previousRoot}/{name}";
             var lst = new List<MapDescription>();
             if (false == string.IsNullOrEmpty(root))
             {
